@@ -1,25 +1,36 @@
-type CommandResult = { content: string; tts?: boolean };
-
 type KettuCommand = {
   name: string;
+  displayName: string;
   description: string;
+  displayDescription: string;
   options: never[];
-  shouldHide: () => boolean;
-  execute: (_args: unknown[], ctx: { channel: unknown; guild: unknown }) => CommandResult;
+  applicationId: string;
+  inputType: number;
+  type: number;
+  execute: (_args: unknown[], ctx: { channel: { id: string }; guild: unknown }) => null;
 };
 
 type CommandRegistrar = {
   registerCommand: (command: KettuCommand) => () => void;
 };
 
+type MessageActions = {
+  sendMessage: (
+    channelId: string,
+    message: { content: string },
+    optimistic?: unknown,
+    options?: { nonce: string },
+  ) => void;
+};
+
 type BunnyApi = {
-  api: {
-    commands: CommandRegistrar;
-  };
+  api: { commands: CommandRegistrar };
+  metro?: { findByProps: (...props: string[]) => MessageActions };
 };
 
 type VendettaApi = {
   commands: CommandRegistrar;
+  metro: { findByProps: (...props: string[]) => MessageActions };
 };
 
 declare const bunny: BunnyApi;
@@ -42,29 +53,41 @@ const FACTS = [
 
 let unregister: (() => void) | undefined;
 
-const command: KettuCommand = {
-  name: "parrotfact",
-  description: "Get a random parrot fact.",
-  options: [],
-  // Kettu's command filter keeps commands whose shouldHide() is not false.
-  shouldHide: () => true,
-  execute: () => {
-    const fact = FACTS[Math.floor(Math.random() * FACTS.length)];
-    return { content: `🦜 ${fact}` };
-  }
-};
-
-function register(commandToRegister: KettuCommand): () => void {
-  // Vendetta-compatible plugins receive commands at vendetta.commands.
-  if (typeof vendetta !== "undefined") {
-    return vendetta.commands.registerCommand(commandToRegister);
-  }
-  // Newer Bunny plugins receive the same API at bunny.api.commands.
-  return bunny.api.commands.registerCommand(commandToRegister);
+function getCommandRegistrar(): CommandRegistrar {
+  if (typeof vendetta !== "undefined") return vendetta.commands;
+  return bunny.api.commands;
 }
 
+function getMessageActions(): MessageActions {
+  if (typeof vendetta !== "undefined") {
+    return vendetta.metro.findByProps("sendMessage");
+  }
+  return bunny.metro!.findByProps("sendMessage");
+}
+
+const command: KettuCommand = {
+  name: "parrotfact",
+  displayName: "parrotfact",
+  description: "Sends a random parrot fact.",
+  displayDescription: "Sends a random parrot fact.",
+  options: [],
+  applicationId: "-1",
+  inputType: 1,
+  type: 1,
+  execute: (_args, ctx) => {
+    const fact = FACTS[Math.floor(Math.random() * FACTS.length)];
+    getMessageActions().sendMessage(
+      ctx.channel.id,
+      { content: `🦜 ${fact}` },
+      void 0,
+      { nonce: Date.now().toString() },
+    );
+    return null;
+  },
+};
+
 function start() {
-  unregister = register(command);
+  unregister = getCommandRegistrar().registerCommand(command);
 }
 
 function stop() {
@@ -76,5 +99,5 @@ export default {
   start,
   stop,
   onLoad: start,
-  onUnload: stop
+  onUnload: stop,
 };
