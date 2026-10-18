@@ -8,16 +8,22 @@ type KettuCommand = {
   execute: (_args: unknown[], ctx: { channel: unknown; guild: unknown }) => CommandResult;
 };
 
-type KettuApi = {
+type CommandRegistrar = {
+  registerCommand: (command: KettuCommand) => () => void;
+};
+
+type BunnyApi = {
   api: {
-    commands: {
-      registerCommand: (command: KettuCommand) => () => void;
-    };
+    commands: CommandRegistrar;
   };
 };
 
-declare const bunny: KettuApi;
-declare const vendetta: KettuApi;
+type VendettaApi = {
+  commands: CommandRegistrar;
+};
+
+declare const bunny: BunnyApi;
+declare const vendetta: VendettaApi;
 
 const FACTS = [
   "Parrots have zygodactyl feet: two toes point forward and two point backward.",
@@ -48,13 +54,17 @@ const command: KettuCommand = {
   }
 };
 
-function getApi(): KettuApi {
-  // The legacy installer provides `vendetta`; the newer Bunny loader provides `bunny`.
-  return typeof vendetta !== "undefined" ? vendetta : bunny;
+function register(commandToRegister: KettuCommand): () => void {
+  // Vendetta-compatible plugins receive commands at vendetta.commands.
+  if (typeof vendetta !== "undefined") {
+    return vendetta.commands.registerCommand(commandToRegister);
+  }
+  // Newer Bunny plugins receive the same API at bunny.api.commands.
+  return bunny.api.commands.registerCommand(commandToRegister);
 }
 
 function start() {
-  unregister = getApi().api.commands.registerCommand(command);
+  unregister = register(command);
 }
 
 function stop() {
