@@ -1,4 +1,12 @@
 {
+  "name": "ParrotFact",
+  "description": "Adds a client-side /parrotfact command that sends a random parrot fact.",
+  "authors": [
+    {
+      "name": "bootplb-ui"
+    }
+  ],
+  "main": "index.js",
   "id": "parrotfact",
   "spec": 3,
   "version": "1.0.0",
@@ -12,6 +20,5 @@
       }
     ]
   },
-  "main": "index.js",
-  "hash": "711cf2b439e3f631d3f2394fdaa7da3e28f5692a2b6fb890531d329caad53b76"
+  "hash": "dead9022fb4a5aafb167f41186b86c612cbbe982c1579c2bc4531945d59a66d3"
 }
